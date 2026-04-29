@@ -22,6 +22,7 @@ echo "Symlinking dotfiles using GNU Stow..."
 cd "$DOTFILES_DIR"
 stow zsh
 stow git
+stow tmux
 
 # 2. Restore Homebrew packages
 echo "Restoring Homebrew packages..."

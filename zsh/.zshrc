@@ -69,3 +69,17 @@ alias c='clear'
 # Shell integrations
 eval "$(fzf --zsh)"
 eval "$(zoxide init --cmd cd zsh)"
+
+# bun completions
+[ -s "/home/khallavan/.bun/_bun" ] && source "/home/khallavan/.bun/_bun"
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
+
+# Auto-start tmux in the main session
+if command -v tmux >/dev/null 2>&1; then
+	if [[ -o interactive ]] && [[ -z "$TMUX" ]] && [[ "$TERM" != "dumb" ]]; then
+		tmux attach-session -t main 2>/dev/null || exec tmux new-session -s main
+	fi
+fi
