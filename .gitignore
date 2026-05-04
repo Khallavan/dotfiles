@@ -1,0 +1,28 @@
+# Secrets
+.env
+.env.*
+*.env
+*.env.*
+credentials.json
+secrets/
+*.key
+*.pem
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.tmp
+
+# Logs/cache
+*.log
+.cache/
+tmp/
+temp/
+
+# Local tool/runtime folders
+node_modules/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
