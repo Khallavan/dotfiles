@@ -89,3 +89,19 @@ if command -v tmux >/dev/null 2>&1; then
 		tmux attach-session -t main 2>/dev/null || exec tmux new-session -s main
 	fi
 fi
+
+
+# Added by Antigravity CLI installer
+export PATH="/home/khallavan/.local/bin:$PATH"
+
+# pnpm
+export PNPM_HOME="/home/khallavan/.local/share/pnpm"
+case ":$PATH:" in
+  *":$PNPM_HOME/bin:"*) ;;
+  *) export PATH="$PNPM_HOME/bin:$PATH" ;;
+esac
+# pnpm end
+
+# >>> Codex installer >>>
+export PATH="/home/khallavan/.local/bin:$PATH"
+# <<< Codex installer <<<
