@@ -79,6 +79,19 @@ La configuración usa estilo **vi** en copy mode.
 - `Ctrl+v` activa selección rectangular
 - `y` copia y sale
 
+## Teclas extendidas
+
+La configuración activa `extended-keys` para que las aplicaciones de terminal,
+como Pi agent, puedan distinguir correctamente combinaciones de teclas modificadas.
+
+```tmux
+set -g extended-keys on
+set -g extended-keys-format csi-u
+```
+
+El formato `csi-u` permite que Pi agent interprete correctamente combinaciones
+como `Shift+Enter`, `Ctrl+Enter` y `Alt+Enter` dentro de tmux.
+
 ## Plugins activos
 
 - `tmux-plugins/tpm`
@@ -105,9 +118,13 @@ Puedes validar que tmux tomó esta configuración con:
 ```bash
 tmux show-options -gv prefix
 tmux show-options -gv mouse
+tmux show-options -gv extended-keys
+tmux show-options -gv extended-keys-format
 ```
 
 El resultado esperado incluye:
 
 - `C-Space`
 - `on`
+- `on`
+- `csi-u`
