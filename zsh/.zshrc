@@ -65,7 +65,7 @@ zstyle ':fzf-tab:complete:__zoxide_z:*' fzf-preview 'ls --color $realpath'
 alias ls='ls --color'
 alias vim='nvim'
 alias c='clear'
-alias ll='eza -la --icons=auto --group-directories-first --git'
+alias ll='eza -la --icons=auto --group-directories-first --git -a'
 
 # Shell integrations
 eval "$(fzf --zsh)"
