@@ -21,7 +21,6 @@ fi
 echo "Symlinking dotfiles using GNU Stow..."
 cd "$DOTFILES_DIR"
 stow zsh
-stow git
 stow tmux
 
 # 2. Install TPM for tmux
