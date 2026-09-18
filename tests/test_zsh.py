@@ -20,6 +20,14 @@ class ZshStartupTests(unittest.TestCase):
         self.home.mkdir()
         self.bin = self.root / "bin"
         self.bin.mkdir()
+        self.shared_brew_bin = self.root / "shared-linuxbrew" / "bin"
+        self.shared_brew_bin.mkdir(parents=True)
+        self.zshrc = self.root / "zshrc"
+        self.zshrc.write_text(
+            ZSHRC.read_text().replace(
+                "/home/linuxbrew/.linuxbrew/bin", str(self.shared_brew_bin)
+            )
+        )
         self.xdg_data = self.root / "data with spaces"
         self.xdg_config = self.root / "config with spaces"
         self.xdg_cache = self.root / "cache with spaces"
@@ -71,7 +79,19 @@ class ZshStartupTests(unittest.TestCase):
         zinit_home = self.xdg_data / "zinit" / "zinit.git"
         zinit_home.mkdir(parents=True)
         (zinit_home / "zinit.zsh").write_text(
-            "zinit() { printf 'zinit %s\\n' \"$*\" >> \"$FAKE_LOG\"; }\n"
+            "zinit() {\n"
+            "  if [[ \"$1\" == light && \"$2\" == zsh-users/zsh-completions && -n \"${FAKE_COMPLETION_DIR:-}\" ]]; then\n"
+            "    fpath=(\"$FAKE_COMPLETION_DIR\" $fpath)\n"
+            "  elif [[ \"$1\" == cdreplay ]]; then\n"
+            "    if (( $+functions[compdef] )); then\n"
+            "      printf 'zinit cdreplay completion=ready\\n' >> \"$FAKE_LOG\"\n"
+            "    else\n"
+            "      printf 'zinit cdreplay completion=missing\\n' >> \"$FAKE_LOG\"\n"
+            "    fi\n"
+            "  else\n"
+            "    printf 'zinit %s\\n' \"$*\" >> \"$FAKE_LOG\"\n"
+            "  fi\n"
+            "}\n"
         )
         return zinit_home
 
@@ -84,7 +104,7 @@ class ZshStartupTests(unittest.TestCase):
             env["TERM"] = term
         if tmux is not None:
             env["TMUX"] = tmux
-        command = f"source {shlex.quote(str(ZSHRC))}; {body}"
+        command = f"source {shlex.quote(str(self.zshrc))}; {body}"
         return subprocess.run(
             [ZSH, "-d", "-i", "-c", command],
             cwd=ROOT,
@@ -114,7 +134,7 @@ class ZshStartupTests(unittest.TestCase):
         self.assertIn("LL=ls -la", result.stdout)
         self.assertIn("VIM=vi", result.stdout)
 
-    def test_paths_use_home_and_xdg_and_do_not_duplicate_entries(self):
+    def test_paths_use_home_xdg_and_shared_brew_without_duplicates(self):
         home_bin = self.home / ".local" / "bin"
         fnm_bin = self.xdg_data / "fnm"
         pnpm_home = self.xdg_data / "pnpm"
@@ -131,9 +151,47 @@ class ZshStartupTests(unittest.TestCase):
         self.assertEqual(1, shell_path.count(str(home_bin)))
         self.assertEqual(1, shell_path.count(str(fnm_bin)))
         self.assertEqual(1, shell_path.count(str(pnpm_home)))
+        self.assertEqual(1, shell_path.count(str(self.shared_brew_bin)))
         self.assertIn(str(self.home / ".opencode" / "bin"), shell_path)
         self.assertNotIn("/home/khallavan", path_line)
         self.assertNotIn("/home/linuxbrew", path_line)
+
+    def test_shared_brew_fallback_is_usable_without_host_tools(self):
+        shared_tool = self.shared_brew_bin / "shared-tool"
+        shared_tool.write_text("#!/bin/sh\nexit 0\n")
+        shared_tool.chmod(0o755)
+
+        result = self.run_zsh(
+            "print -r -- \"SHARED_TOOL=$(command -v shared-tool)\"; "
+            "print -r -- \"PATH=$PATH\""
+        )
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("", result.stderr)
+        self.assertIn(f"SHARED_TOOL={shared_tool}", result.stdout)
+        self.assertNotIn("/home/linuxbrew", result.stdout)
+
+    def test_final_local_bin_precedes_bun_bin(self):
+        local_bin = self.home / ".local" / "bin"
+        bun_bin = self.home / ".bun" / "bin"
+        local_bin.mkdir(parents=True)
+        bun_bin.mkdir(parents=True)
+        for directory in (local_bin, bun_bin):
+            tool = directory / "priority-tool"
+            tool.write_text("#!/bin/sh\nexit 0\n")
+            tool.chmod(0o755)
+
+        result = self.run_zsh(
+            "print -r -- \"TOOL=$(command -v priority-tool)\"; "
+            "print -r -- \"PATH=$PATH\""
+        )
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("", result.stderr)
+        self.assertIn(f"TOOL={local_bin / 'priority-tool'}", result.stdout)
+        path_line = next(line for line in result.stdout.splitlines() if line.startswith("PATH="))
+        shell_path = path_line.removeprefix("PATH=").split(":")
+        self.assertLess(shell_path.index(str(local_bin)), shell_path.index(str(bun_bin)))
 
     def test_present_integrations_are_guarded_and_preserve_aliases(self):
         config = self.home / "dotfiles" / "pure.omp.json"
@@ -217,6 +275,33 @@ class ZshStartupTests(unittest.TestCase):
         self.assertIn("zinit light zsh-users/zsh-syntax-highlighting", calls)
         self.assertNotIn("OMZP::dnf", calls)
 
+    def test_zinit_replay_requires_initialized_completion(self):
+        self.write_fake_zinit()
+
+        result = self.run_zsh()
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("", result.stderr)
+        self.assertIn("zinit cdreplay completion=ready", self.calls())
+        self.assertNotIn("zinit cdreplay completion=missing", self.calls())
+
+    def test_compinit_discovers_zinit_completion_path(self):
+        completion_dir = self.xdg_data / "zinit-completions"
+        completion_dir.mkdir(parents=True)
+        (completion_dir / "_zz_verify").write_text("#compdef zz_verify\n")
+        self.env["FAKE_COMPLETION_DIR"] = str(completion_dir)
+        self.write_fake_zinit()
+
+        result = self.run_zsh(
+            "(( ${+_comps[zz_verify]} )) && "
+            "print -r -- ZINIT_COMPLETION_READY || "
+            "print -r -- ZINIT_COMPLETION_MISSING"
+        )
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("", result.stderr)
+        self.assertIn("ZINIT_COMPLETION_READY", result.stdout)
+
     def test_existing_zinit_loads_dnf_snippet_when_dnf_is_available(self):
         self.write_fake_zinit()
         self.write_simple_fake("dnf")
@@ -243,11 +328,11 @@ class ZshStartupTests(unittest.TestCase):
         self.assertEqual("", result.stderr)
         self.assertNotIn("tmux ", self.calls())
 
-    def test_startup_has_no_personal_or_linuxbrew_paths(self):
+    def test_startup_has_no_personal_paths_and_keeps_shared_brew_fallback(self):
         source = ZSHRC.read_text()
 
         self.assertNotIn("/home/khallavan", source)
-        self.assertNotIn("/home/linuxbrew", source)
+        self.assertIn("/home/linuxbrew/.linuxbrew/bin", source)
 
 
 if __name__ == "__main__":

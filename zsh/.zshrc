@@ -36,14 +36,18 @@ if [[ -r "$ZINIT_HOME/zinit.zsh" ]] && source "$ZINIT_HOME/zinit.zsh" 2>/dev/nul
 		fi
 		zinit snippet OMZP::uv 2>/dev/null
 		zinit snippet OMZP::command-not-found 2>/dev/null
-		zinit cdreplay -q 2>/dev/null
 	fi
 fi
 
 # Completion works with or without Zinit.
-if autoload -Uz compinit; then
-	compinit 2>/dev/null
+typeset -i _completion_initialized=0
+if autoload -Uz compinit && compinit 2>/dev/null; then
+	_completion_initialized=1
 fi
+if (( _completion_initialized )) && (( $+functions[zinit] )); then
+	zinit cdreplay -q 2>/dev/null
+fi
+unset _completion_initialized
 
 # oh-my-posh is optional and only runs with a readable configuration file.
 if command -v oh-my-posh >/dev/null 2>&1; then
