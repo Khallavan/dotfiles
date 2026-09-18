@@ -8,11 +8,13 @@ _prepend_path() {
 _prepend_path "$HOME/.local/bin"
 _prepend_path "$HOME/.opencode/bin"
 
-# Use an explicitly configured Homebrew prefix, or a user-local Linuxbrew path.
+# Prefer an explicit Homebrew prefix, then user-local or shared Linuxbrew.
 if [[ -n ${HOMEBREW_PREFIX:-} ]]; then
 	_prepend_path "$HOMEBREW_PREFIX/bin"
 elif [[ -d "$HOME/.linuxbrew/bin" ]]; then
 	_prepend_path "$HOME/.linuxbrew/bin"
+elif [[ -d /home/linuxbrew/.linuxbrew/bin ]]; then
+	_prepend_path /home/linuxbrew/.linuxbrew/bin
 fi
 
 XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
@@ -142,6 +144,9 @@ PNPM_HOME="${PNPM_HOME:-$XDG_DATA_HOME/pnpm}"
 export PNPM_HOME
 _prepend_path "$PNPM_HOME"
 _prepend_path "$PNPM_HOME/bin"
+
+# Keep user-local executables ahead of package-manager shims.
+_prepend_path "$HOME/.local/bin"
 
 # Auto-start tmux in the main session
 if command -v tmux >/dev/null 2>&1; then
