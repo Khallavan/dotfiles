@@ -30,3 +30,4 @@ zsh/.atl/
 zsh/.zcompdump*
 # Local Pi runtime state
 .atl/
+/odd/
