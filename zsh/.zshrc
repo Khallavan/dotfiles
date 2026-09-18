@@ -1,37 +1,65 @@
-export PATH=$PATH:$HOME/.local/bin:$HOME/.opencode/bin:/home/linuxbrew/.linuxbrew/bin
+# Keep user-specific paths portable and unique, including paths with spaces.
+typeset -U path
+_prepend_path() {
+	[[ -n "$1" ]] || return 0
+	path=("$1" "${path[@]}")
+}
 
-# Set the directory to store zinit and plugins
-ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
+_prepend_path "$HOME/.local/bin"
+_prepend_path "$HOME/.opencode/bin"
 
-# check zinit installation
-if [ ! -d "$ZINIT_HOME" ]; then
-	mkdir -p "$(dirname $ZINIT_HOME)"
-	git clone https://github.com/zdharma-continuum/zinit.git "$ZINIT_HOME"
+# Use an explicitly configured Homebrew prefix, or a user-local Linuxbrew path.
+if [[ -n ${HOMEBREW_PREFIX:-} ]]; then
+	_prepend_path "$HOMEBREW_PREFIX/bin"
+elif [[ -d "$HOME/.linuxbrew/bin" ]]; then
+	_prepend_path "$HOME/.linuxbrew/bin"
 fi
 
-# source/load zinit
-source "${ZINIT_HOME}/zinit.zsh"
+XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 
-# Add in zsh plugins
-zinit light zsh-users/zsh-syntax-highlighting
-zinit light zsh-users/zsh-completions
-zinit light zsh-users/zsh-autosuggestions
-zinit light Aloxaf/fzf-tab
+# Zinit is optional. Never clone or bootstrap a missing plugin manager at startup.
+ZINIT_HOME="${ZINIT_HOME:-$XDG_DATA_HOME/zinit/zinit.git}"
+if [[ -r "$ZINIT_HOME/zinit.zsh" ]] && source "$ZINIT_HOME/zinit.zsh" 2>/dev/null; then
+	if (( $+functions[zinit] )); then
+		zinit light zsh-users/zsh-syntax-highlighting 2>/dev/null
+		zinit light zsh-users/zsh-completions 2>/dev/null
+		zinit light zsh-users/zsh-autosuggestions 2>/dev/null
+		zinit light Aloxaf/fzf-tab 2>/dev/null
 
-# Add in snippets
-zinit snippet OMZL::git.zsh
-zinit snippet OMZP::git
-zinit snippet OMZP::sudo
-zinit snippet OMZP::dnf
-zinit snippet OMZP::uv
-zinit snippet OMZP::command-not-found
+		zinit snippet OMZL::git.zsh 2>/dev/null
+		zinit snippet OMZP::git 2>/dev/null
+		zinit snippet OMZP::sudo 2>/dev/null
+		if command -v dnf >/dev/null 2>&1; then
+			zinit snippet OMZP::dnf 2>/dev/null
+		fi
+		zinit snippet OMZP::uv 2>/dev/null
+		zinit snippet OMZP::command-not-found 2>/dev/null
+		zinit cdreplay -q 2>/dev/null
+	fi
+fi
 
-# Load completions
-autoload -Uz compinit && compinit
-zinit cdreplay -q
+# Completion works with or without Zinit.
+if autoload -Uz compinit; then
+	compinit 2>/dev/null
+fi
 
-# oh-my-posh
-eval "$(oh-my-posh init zsh --config $HOME/dotfiles/pure.omp.json)"
+# oh-my-posh is optional and only runs with a readable configuration file.
+if command -v oh-my-posh >/dev/null 2>&1; then
+	_oh_my_posh_config="${OH_MY_POSH_CONFIG:-}"
+	if [[ -z "$_oh_my_posh_config" ]]; then
+		if [[ -f "$HOME/dotfiles/pure.omp.json" && -r "$HOME/dotfiles/pure.omp.json" ]]; then
+			_oh_my_posh_config="$HOME/dotfiles/pure.omp.json"
+		elif [[ -f "${XDG_CONFIG_HOME:-$HOME/.config}/oh-my-posh/pure.omp.json" && -r "${XDG_CONFIG_HOME:-$HOME/.config}/oh-my-posh/pure.omp.json" ]]; then
+			_oh_my_posh_config="${XDG_CONFIG_HOME:-$HOME/.config}/oh-my-posh/pure.omp.json"
+		fi
+	fi
+	if [[ -n "$_oh_my_posh_config" && -f "$_oh_my_posh_config" && -r "$_oh_my_posh_config" ]]; then
+		if _oh_my_posh_init="$(oh-my-posh init zsh --config "$_oh_my_posh_config" 2>/dev/null)"; then
+			eval "$_oh_my_posh_init" 2>/dev/null || :
+		fi
+	fi
+	unset _oh_my_posh_config _oh_my_posh_init
+fi
 
 # Keybindings
 bindkey -e
@@ -42,7 +70,7 @@ bindkey '^[w' kill-region
 
 # History
 HISTSIZE=5000
-HISTFILE=~/.zsh_history
+HISTFILE="$HOME/.zsh_history"
 SAVEHIST=$HISTSIZE
 HISTDUP=erase
 
@@ -63,26 +91,57 @@ zstyle ':fzf-tab:complete:__zoxide_z:*' fzf-preview 'ls --color $realpath'
 
 # Aliases
 alias ls='ls --color'
-alias vim='nvim'
 alias c='clear'
-alias ll='eza -la --icons=auto --group-directories-first --git -a'
-
-# Shell integrations
-eval "$(fzf --zsh)"
-eval "$(zoxide init --cmd cd zsh)"
-
-# fnm
-export PATH="$HOME/.local/share/fnm:$PATH"
-if command -v fnm >/dev/null 2>&1; then
-	eval "$(fnm env --use-on-cd --shell zsh)"
+if command -v eza >/dev/null 2>&1; then
+	alias ll='eza -la --icons=auto --group-directories-first --git -a'
+else
+	alias ll='ls -la'
+fi
+if command -v nvim >/dev/null 2>&1; then
+	alias vim='nvim'
+elif command -v vim >/dev/null 2>&1; then
+	alias vim="${commands[vim]}"
+elif command -v vi >/dev/null 2>&1; then
+	alias vim='vi'
 fi
 
-# bun completions
-[ -s "/home/khallavan/.bun/_bun" ] && source "/home/khallavan/.bun/_bun"
+# Shell integrations are optional and must tolerate older tool versions.
+if command -v fzf >/dev/null 2>&1; then
+	if _fzf_init="$(fzf --zsh 2>/dev/null)"; then
+		eval "$_fzf_init" 2>/dev/null || :
+	fi
+	unset _fzf_init
+fi
 
-# bun
-export BUN_INSTALL="$HOME/.bun"
-export PATH="$BUN_INSTALL/bin:$PATH"
+if command -v zoxide >/dev/null 2>&1; then
+	if _zoxide_init="$(zoxide init --cmd cd zsh 2>/dev/null)"; then
+		eval "$_zoxide_init" 2>/dev/null || :
+	fi
+	unset _zoxide_init
+fi
+
+# fnm
+_prepend_path "$XDG_DATA_HOME/fnm"
+if command -v fnm >/dev/null 2>&1; then
+	if _fnm_env="$(fnm env --use-on-cd --shell zsh 2>/dev/null)"; then
+		eval "$_fnm_env" 2>/dev/null || :
+	fi
+	unset _fnm_env
+fi
+
+# bun completions and binaries
+BUN_INSTALL="${BUN_INSTALL:-$HOME/.bun}"
+export BUN_INSTALL
+_prepend_path "$BUN_INSTALL/bin"
+if [[ -r "$BUN_INSTALL/_bun" ]]; then
+	source "$BUN_INSTALL/_bun" 2>/dev/null || :
+fi
+
+# pnpm
+PNPM_HOME="${PNPM_HOME:-$XDG_DATA_HOME/pnpm}"
+export PNPM_HOME
+_prepend_path "$PNPM_HOME"
+_prepend_path "$PNPM_HOME/bin"
 
 # Auto-start tmux in the main session
 if command -v tmux >/dev/null 2>&1; then
@@ -90,19 +149,3 @@ if command -v tmux >/dev/null 2>&1; then
 		tmux attach-session -t main 2>/dev/null || exec tmux new-session -s main
 	fi
 fi
-
-
-# Added by Antigravity CLI installer
-export PATH="/home/khallavan/.local/bin:$PATH"
-
-# pnpm
-export PNPM_HOME="/home/khallavan/.local/share/pnpm"
-case ":$PATH:" in
-  *":$PNPM_HOME/bin:"*) ;;
-  *) export PATH="$PNPM_HOME/bin:$PATH" ;;
-esac
-# pnpm end
-
-# >>> Codex installer >>>
-export PATH="/home/khallavan/.local/bin:$PATH"
-# <<< Codex installer <<<

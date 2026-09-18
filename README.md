@@ -23,13 +23,49 @@ chmod +x install.sh
 ./install.sh
 ```
 
-### ¿Qué hace el script `install.sh`?
+### What does `install.sh` do?
 
-1. Verifica si **GNU Stow** está instalado (y lo instala vía `dnf` o `brew` si es necesario).
-2. Uses **GNU Stow** to symlink the configuration packages (`zsh`, `tmux`) into the home directory (`~`).
-3. Instala los paquetes, aplicaciones y extensiones de VS Code definidos en el `Brewfile` utilizando Homebrew.
-4. Configura **Zsh** como tu shell predeterminado.
-5. Muestra recordatorios útiles para reinstalar herramientas globales de Node.js, Rust y Python.
+1. Validates the checkout and detects Debian/Ubuntu, Fedora/RHEL, Arch, or CachyOS.
+2. Offers one confirmed native package-manager operation for missing `stow`, `git`, `zsh`, and `tmux`.
+3. Offers the canonical `~/dotfiles` symlink, then previews the complete Zsh/Tmux Stow group before any links are created.
+4. Separately offers optional TPM, an already-installed Homebrew bundle, and an eligible login-shell change.
+5. Prints a final summary of applied, skipped, and failed work. It never installs Homebrew, overwrites conflicts, runs `chsh` through `sudo`, or performs the deferred `herdr` migration.
+
+## Portable Linux installer
+
+`./install.sh` is an English-only interactive installer for Debian/Ubuntu, Fedora/RHEL, Arch, and CachyOS. Run it from a valid checkout in a terminal; do **not** run the whole script with `sudo`.
+
+```bash
+./install.sh
+```
+
+The required core tools are `stow`, `git`, `zsh`, and `tmux`. When any are missing, the installer offers one confirmed native package-manager operation (`apt-get`, `dnf`, or `pacman`). It never installs Homebrew.
+
+| Step | Safety behavior |
+| --- | --- |
+| Canonical checkout | Offers `~/dotfiles -> <current checkout>` only when absent; an existing foreign or dangling path is never replaced. |
+| Zsh and Tmux links | Runs a read-only Stow preview for the complete `zsh` + `tmux` group before asking to link it to `HOME`. Conflicts prevent the whole group from changing; Stow does not adopt or overwrite files. |
+| TPM | Optional. The installer creates `~/.tmux/plugins` only after confirmation and clones only the official TPM URL into an absent safe target. Existing targets must be the expected Git checkout or are left untouched. |
+| Homebrew bundle | Optional and offered only if `brew` already exists. Brewfile entries can be unsuitable for Linux (for example macOS applications or VS Code entries); failures are reported in the final summary. |
+| Login shell | Optional. The discovered absolute `zsh` must be listed in `/etc/shells`; the current account is looked up through `getent`/`id`, then `chsh` is separately confirmed without `sudo`. |
+
+Every question accepts `yes`, `no`, or `cancel` through terminal interruption; blank means no. End-of-input or Ctrl-C stops dependent work with a nonzero result. The final summary distinguishes applied, skipped, and failed steps, so cancellation never implies that earlier changes were reverted.
+
+Tests use a PTY, a temporary HOME, and fake tools. They exercise control flow and simulated Stow invocations; they do not claim real distribution, package-manager, network, `chsh`, or Stow integration verification. `herdr` remains deliberately deferred.
+
+## Zsh portability and optional tools
+
+The installer manages required tools and dotfile links; the shell configuration only detects optional tools that are already installed. It does not install optional tools or bootstrap Zinit.
+
+`zsh/.zshrc` uses `$HOME` and XDG paths, keeps PATH entries unique, and continues without errors when `oh-my-posh`, `fzf`, `zoxide`, `fnm`, Bun, pnpm, `eza`, or Neovim is absent. A readable `pure.omp.json` is required for `oh-my-posh`; an `fzf` binary must also support `fzf --zsh`. Without `eza` or Neovim, `ll` and `vim` use conservative fallbacks.
+
+Zinit remains optional. An existing installation can load the configured plugins, but a missing installation is skipped without cloning or making a network request during shell startup. To enable it, install it manually before starting Zsh:
+
+```bash
+ZINIT_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/zinit/zinit.git"
+mkdir -p "$(dirname "$ZINIT_HOME")"
+git clone https://github.com/zdharma-continuum/zinit.git "$ZINIT_HOME"
+```
 
 ## 🖥 Tmux
 
