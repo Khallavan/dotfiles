@@ -52,7 +52,7 @@ The required core tools are `stow`, `git`, `zsh`, and `tmux`. When any are missi
 
 Every question accepts `yes`, `no`, or `cancel` through terminal interruption; blank means no. End-of-input or Ctrl-C stops dependent work with a nonzero result. The final summary distinguishes applied, skipped, and failed steps, so cancellation never implies that earlier changes were reverted.
 
-Tests use a PTY, a temporary HOME, and fake tools. They exercise control flow and simulated Stow invocations; they do not claim real distribution, package-manager, network, `chsh`, or Stow integration verification. `herdr` remains deliberately deferred.
+Automated Python tests for the installer and Zsh configuration are not included. Distribution, package-manager, network, `chsh`, and Stow integration have not been verified. Herdr installation and configuration linking are outside this installer.
 
 ## Zsh portability and optional tools
 
