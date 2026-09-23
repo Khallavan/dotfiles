@@ -7,7 +7,8 @@
 Este repositorio gestiona la configuración de las siguientes herramientas:
 
 - **Zsh:** Configuración del shell a través de `.zshrc`.
-- **Tmux:** Multiplexor de terminal con sesión principal persistente y tema Gruvbox.
+- **Herdr (opcional):** Multiplexor preferido si está instalado localmente; su configuración se enlaza desde `herdr/.config/herdr/config.toml` mediante Stow.
+- **Tmux:** Multiplexor conservado como alternativa cuando Herdr no está disponible, con sesión principal persistente y tema Gruvbox.
 - **Homebrew:** Gestión de paquetes de macOS/Linux y extensiones de VS Code a través de `Brewfile`.
 - **Oh My Posh:** Tema de terminal (`pure.omp.json`).
 - Listas de paquetes globales instalados para **Rust (Cargo)**, **Python (uv)**, y **Node.js (npm)**.
@@ -29,7 +30,7 @@ chmod +x install.sh
 2. Offers one confirmed native package-manager operation for missing `stow`, `git`, `zsh`, and `tmux`.
 3. Offers the canonical `~/dotfiles` symlink, then previews the complete Zsh/Tmux Stow group before any links are created.
 4. Separately offers optional TPM, an already-installed Homebrew bundle, and an eligible login-shell change.
-5. Prints a final summary of applied, skipped, and failed work. It never installs Homebrew, overwrites conflicts, runs `chsh` through `sudo`, or performs the deferred `herdr` migration.
+5. Prints a final summary of applied, skipped, and failed work. It never installs Homebrew or Herdr, overwrites conflicts, or runs `chsh` through `sudo`; Herdr setup is separate from this installer.
 
 ## Portable Linux installer
 
@@ -57,7 +58,7 @@ Tests use a PTY, a temporary HOME, and fake tools. They exercise control flow an
 
 The installer manages required tools and dotfile links; the shell configuration only detects optional tools that are already installed. It does not install optional tools or bootstrap Zinit.
 
-`zsh/.zshrc` uses `$HOME` and XDG paths, keeps PATH entries unique, and continues without errors when `oh-my-posh`, `fzf`, `zoxide`, `fnm`, Bun, pnpm, `eza`, or Neovim is absent. A readable `pure.omp.json` is required for `oh-my-posh`; an `fzf` binary must also support `fzf --zsh`. Without `eza` or Neovim, `ll` and `vim` use conservative fallbacks.
+`zsh/.zshrc` uses `$HOME` and XDG paths, keeps PATH entries unique, and continues without errors when `oh-my-posh`, `fzf`, `zoxide`, `fnm`, Bun, pnpm, `eza`, or Neovim is absent. A readable `pure.omp.json` is required for `oh-my-posh`; an `fzf` binary must also support `fzf --zsh`. Without `eza` or Neovim, `ll` and `vim` use conservative fallbacks. In an interactive terminal outside tmux or Herdr, Zsh starts Herdr when installed locally; otherwise it attaches to the tmux `main` session or creates it. The installer does not install Herdr or link its configuration; link `herdr/.config/herdr/config.toml` separately with Stow.
 
 Zinit remains optional. An existing installation can load the configured plugins, but a missing installation is skipped without cloning or making a network request during shell startup. To enable it, install it manually before starting Zsh:
 

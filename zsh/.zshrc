@@ -152,9 +152,12 @@ _prepend_path "$PNPM_HOME/bin"
 # Keep user-local executables ahead of package-manager shims.
 _prepend_path "$HOME/.local/bin"
 
-# Auto-start tmux in the main session
-if command -v tmux >/dev/null 2>&1; then
-	if [[ -o interactive ]] && [[ -z "$TMUX" ]] && [[ "$TERM" != "dumb" ]]; then
+# Start Herdr on a real interactive terminal; retain tmux when Herdr is absent.
+if [[ -o interactive ]] && [[ -t 0 && -t 1 ]] && [[ -n "${TERM:-}" && "$TERM" != "dumb" ]] \
+	&& [[ -z "${TMUX:-}" && -z "${HERDR_PANE_ID:-}" && -z "${HERDR_SOCKET_PATH:-}" ]]; then
+	if command -v herdr >/dev/null 2>&1; then
+		herdr
+	elif command -v tmux >/dev/null 2>&1; then
 		tmux attach-session -t main 2>/dev/null || exec tmux new-session -s main
 	fi
 fi

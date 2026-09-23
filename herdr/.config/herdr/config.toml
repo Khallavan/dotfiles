@@ -1,0 +1,33 @@
+onboarding = false
+# Osaka Jade palette: https://raw.githubusercontent.com/Justikun/omarchy-osaka-jade-theme/main/alacritty.toml
+# Cyan #2DD5B7 has no documented Herdr custom-theme override.
+[theme]
+name = "terminal"
+
+auto_switch = false
+[theme.custom]
+sidebar_bg = "#111c18"
+active_row_bg = "#304c3e"
+selection_bg = "#345543"
+panel_bg = "#111c18"
+accent = "#D2689C"
+green = "#549e6a"
+blue = "#509475"
+red = "#FF5345"
+yellow = "#459451"
+text = "#C1C497"
+
+[keys]
+prefix = "ctrl+space"
+focus_pane_left = "prefix+h"
+focus_pane_down = "prefix+j"
+focus_pane_up = "prefix+k"
+focus_pane_right = "prefix+l"
+previous_tab = "shift+left"
+next_tab = "shift+right"
+
+[ui.toast]
+delivery = "herdr"
+
+[ui]
+status_indicators = "symbols"
